@@ -357,6 +357,8 @@ class _SettingsBody extends StatelessWidget {
                           contentPadding: EdgeInsets.zero,
                         ),
                         const SizedBox(height: 12),
+                        _ApiTokenField(storage: storage),
+                        const SizedBox(height: 12),
                         SwitchListTile(
                           title: Text(
                             'Allow External Connections',
@@ -1044,3 +1046,61 @@ class _HardwareSettingsCardState extends State<_HardwareSettingsCard> {
   }
 }
 
+
+/// GM AI hardening: editable API token for the local server.
+class _ApiTokenField extends StatefulWidget {
+  final ChatStorageService storage;
+  const _ApiTokenField({required this.storage});
+
+  @override
+  State<_ApiTokenField> createState() => _ApiTokenFieldState();
+}
+
+class _ApiTokenFieldState extends State<_ApiTokenField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.storage.localApiToken);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final v = _controller.text.trim();
+    widget.storage.localApiToken = v;
+    Get.snackbar(
+      'API Token',
+      v.isEmpty ? 'Token removido. Servidor protegido por loopback.' : 'Token salvo e exigido nas rotas da API local.',
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return TextField(
+      controller: _controller,
+      obscureText: true,
+      decoration: InputDecoration(
+        labelText: 'API Token (opcional)',
+        hintText: 'Token exigido p/ acesso externo',
+        prefixIcon: const Icon(Icons.key_rounded, size: 18),
+        suffixIcon: IconButton(
+          icon: const Icon(Icons.save_rounded, size: 18),
+          onPressed: _save,
+          tooltip: 'Salvar token',
+        ),
+        isDense: true,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
+      onSubmitted: (_) => _save(),
+    );
+  }
+}

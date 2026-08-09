@@ -96,6 +96,16 @@ class ChatStorageService extends GetxService {
   set localApiAllInterfaces(bool value) =>
       _settingsBox.put('local_api_all_interfaces', value);
 
+  /// Bearer token for the local API server (GM AI hardening).
+  /// When set, every route (except /healthz) requires
+  /// `Authorization: Bearer <token>`. When the server is exposed on
+  /// 0.0.0.0 (allInterfaces), the token is REQUIRED to start.
+  String get localApiToken =>
+      _settingsBox.get('local_api_token', defaultValue: '') as String;
+
+  set localApiToken(String value) =>
+      _settingsBox.put('local_api_token', value.trim());
+
   // ── Hardware Settings ──────────────────────────────────────
 
   int get gpuLayers =>

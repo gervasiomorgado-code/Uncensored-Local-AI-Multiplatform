@@ -55,6 +55,16 @@ class LocalApiServerService extends GetxService {
     errorMessage.value = '';
 
     try {
+      // GM AI hardening: never expose on the network without a token.
+      if (allInterfaces.value && _storage.localApiToken.isEmpty) {
+        errorMessage.value =
+            'Exposing the server on the network requires an API token. '
+            'Set one in Settings → Local API → API Token, or keep the server '
+            'on this device only (127.0.0.1).';
+        isStarting.value = false;
+        return;
+      }
+
       final bindAddress = allInterfaces.value
           ? InternetAddress.anyIPv4
           : InternetAddress.loopbackIPv4;
@@ -159,6 +169,32 @@ class LocalApiServerService extends GetxService {
       request.response.statusCode = HttpStatus.noContent;
       await request.response.close();
       return;
+    }
+
+    // GM AI hardening: if a token is configured, require
+    // `Authorization: Bearer <token>` on every route except /healthz.
+    final configuredToken = _storage.localApiToken;
+    if (configuredToken.isNotEmpty) {
+      final path = request.uri.path;
+      final isHealth = request.method == 'GET' && path == '/healthz';
+      if (!isHealth) {
+        final auth = request.headers.value(HttpHeaders.authorizationHeader) ?? '';
+        final presented = auth.startsWith('Bearer ')
+            ? auth.substring('Bearer '.length).trim()
+            : '';
+        if (presented.isEmpty || presented != configuredToken) {
+          request.response.statusCode = HttpStatus.unauthorized;
+          request.response.headers.set('WWW-Authenticate', 'Bearer');
+          await _writeJson(request.response, {
+            'error': {
+              'message': 'Invalid or missing API key.',
+              'type': 'invalid_request_error',
+              'code': 'invalid_api_key',
+            },
+          });
+          return;
+        }
+      }
     }
 
     try {
